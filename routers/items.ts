@@ -2,6 +2,8 @@ import express from "express";
 import mySqlDb from "../mySqlDb";
 import {Item, ItemMutation} from "../types";
 import {ResultSetHeader} from "mysql2";
+import {imagesUpload} from "../multer";
+
 const itemsRouter = express.Router();
 
 
@@ -26,7 +28,7 @@ itemsRouter.get("/:id", async (req: express.Request, res: express.Response) => {
     return res.send(items[0]);
 })
 
-itemsRouter.post("/", async (req: express.Request, res: express.Response) => {
+itemsRouter.post("/", imagesUpload.single('image'), async (req: express.Request, res: express.Response) => {
     if (!req.body.title) {
         return res.status(400).send({error: 'Title are required!'});
     }
@@ -50,7 +52,7 @@ itemsRouter.post("/", async (req: express.Request, res: express.Response) => {
         [resultHeader.insertId]
     );
     const products = getNewResult[0] as Item[];
-    return res.send(products);
+    return res.send(products[0]);
 })
 
 
