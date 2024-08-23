@@ -1,6 +1,6 @@
 import express from 'express';
 import mySqlDb from "../mySqlDb";
-import {Category, LocationMutation, myLocation} from "../types";
+import {Category, Item, LocationMutation, myLocation} from "../types";
 import {ResultSetHeader} from "mysql2";
 
 const locationsRouter = express.Router();
@@ -31,8 +31,8 @@ locationsRouter.get("/:id", async (req: express.Request, res: express.Response, 
 
 
 locationsRouter.post("/", async (req: express.Request, res: express.Response) => {
-    if (!req.body.title || !req.body.description) {
-        return res.status(400).send({error: 'Title and description are required!'});
+    if (!req.body.title) {
+        return res.status(400).send({error: 'Title  are required!'});
     }
 
 
@@ -55,6 +55,38 @@ locationsRouter.post("/", async (req: express.Request, res: express.Response) =>
 
     const locations = getNewResult[0] as Category[];
     return res.send(locations[0]);
+})
+
+
+locationsRouter.delete("/:id", async (req: express.Request, res: express.Response, next) => {
+    try {
+        const id = req.params.id;
+
+        const [haveItem] = await mySqlDb.getConnection().query(
+            'SELECT * FROM items WHERE location_id = ?',
+            [id]
+        );
+
+        if ((haveItem as Item[]).length > 0) {
+            return res.status(400).send({
+                error: "Cannot delete location because it has related items."
+            });
+        }
+
+        const result = await mySqlDb.getConnection().query(
+            'DELETE FROM location WHERE id = ?',
+            [id]
+        );
+
+        const resultHeader = result[0] as ResultSetHeader;
+        if (resultHeader.affectedRows === 0) {
+            return res.status(404).send('No location found.');
+        }
+
+        return res.send();
+    } catch (e) {
+        next(e);
+    }
 })
 
 

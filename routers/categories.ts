@@ -1,6 +1,6 @@
 import express from "express";
 import mySqlDb from "../mySqlDb";
-import {Category, CategoryMutation} from "../types";
+import {Category, CategoryMutation, Item} from "../types";
 import {ResultSetHeader} from "mysql2";
 
 
@@ -32,8 +32,8 @@ categoriesRouter.get("/:id", async (req: express.Request, res: express.Response,
 })
 
 categoriesRouter.post("/", async (req: express.Request, res: express.Response) => {
-    if (!req.body.title || !req.body.description) {
-        return res.status(400).send({error: 'Title and description are required!'});
+    if (!req.body.title) {
+        return res.status(400).send({error: 'Title are required!'});
     }
 
 
@@ -56,6 +56,36 @@ categoriesRouter.post("/", async (req: express.Request, res: express.Response) =
 
     const categories = getNewResult[0] as Category[];
     return res.send(categories[0]);
+})
+
+categoriesRouter.delete("/:id", async (req: express.Request, res: express.Response, next) => {
+    try {
+        const id = req.params.id;
+
+        const [haveItem] = await mySqlDb.getConnection().query(
+            'SELECT * FROM items WHERE category_id = ?',
+            [id]
+        );
+
+        if ((haveItem as Item[]).length > 0) {
+            return res.status(400).send({
+                error: "Cannot delete categories because it has related items."
+            });
+        }
+        const result = await mySqlDb.getConnection().query(
+            'DELETE FROM categories WHERE id = ?',
+            [id]
+        );
+
+        const resultHeader = result[0] as ResultSetHeader;
+        if (resultHeader.affectedRows === 0) {
+            return res.status(404).send('No category found.');
+        }
+
+        return res.send();
+    } catch (e) {
+        next(e);
+    }
 })
 
 export default categoriesRouter;
